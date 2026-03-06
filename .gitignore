@@ -8,6 +8,7 @@ build/
 *.db
 .env
 env.sh
+.kate_notes_used.json
 .venv/
 venv/
 config.yaml

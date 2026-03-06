@@ -1,13 +1,16 @@
+import json
 import os
 import random
 import smtplib
 from datetime import date
 from email.message import EmailMessage
+from pathlib import Path
 
 from job_search_agent.config import Config
 from job_search_agent.models import Job
 
 KATE_EMAIL = "kateoreed2@gmail.com"
+KATE_NOTES_HISTORY = ".kate_notes_used.json"
 
 KATE_NOTES = [
     "Your smile could outshine\nevery job listing here —\nlucky me, I searched.",
@@ -82,8 +85,33 @@ def send_digest(jobs: list[Job], config: Config) -> bool:
 def _pick_kate_note(recipient: str, job_count: int) -> str | None:
     if recipient.lower().strip() != KATE_EMAIL:
         return None
-    note = random.choice(KATE_NOTES)
-    return note.format(n=job_count)
+
+    # Load history of used note indices
+    history_path = Path(KATE_NOTES_HISTORY)
+    used: list[int] = []
+    try:
+        if history_path.exists():
+            used = json.loads(history_path.read_text())
+    except (json.JSONDecodeError, OSError):
+        used = []
+
+    # Find unused notes; reset if all have been used
+    all_indices = set(range(len(KATE_NOTES)))
+    available = list(all_indices - set(used))
+    if not available:
+        used = []
+        available = list(all_indices)
+
+    idx = random.choice(available)
+    used.append(idx)
+
+    # Save updated history
+    try:
+        history_path.write_text(json.dumps(used))
+    except OSError:
+        pass
+
+    return KATE_NOTES[idx].format(n=job_count)
 
 
 def _build_html(jobs: list[Job], note: str | None = None) -> str:
