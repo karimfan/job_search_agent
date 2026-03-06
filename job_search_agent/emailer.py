@@ -1,10 +1,26 @@
 import os
+import random
 import smtplib
 from datetime import date
 from email.message import EmailMessage
 
 from job_search_agent.config import Config
 from job_search_agent.models import Job
+
+KATE_EMAIL = "kateoreed2@gmail.com"
+
+KATE_NOTES = [
+    "Your smile could outshine\nevery job listing here —\nlucky me, I searched.",
+    "Roses are red, resumes are long,\nbut none of these jobs make my heart sing like your song.",
+    "I searched a thousand boards today, but my favorite find is still you.",
+    "They say the best things aren't found on job boards — and you're proof.",
+    "If charm were a keyword, you'd be the only search result.",
+    "These jobs are great, but they'll never be as captivating as your laugh.",
+    "Morning light arrives,\nI think of you, then press send —\nhope this makes you smile.",
+    "Somewhere between 'apply now' and 'submit,' I just wanted to say — you're wonderful.",
+    "Every search I run reminds me: the best discovery I ever made was you.",
+    "The algorithm found {n} jobs today, but zero that compare to finding you.",
+]
 
 
 def send_digest(jobs: list[Job], config: Config) -> bool:
@@ -38,28 +54,49 @@ def send_digest(jobs: list[Job], config: Config) -> bool:
         return False
 
     subject = f"{config.email.subject_prefix} {len(jobs)} jobs found — {date.today()}"
-    html_body = _build_html(jobs)
-    text_body = _build_text(jobs)
-
-    msg = EmailMessage()
-    msg["Subject"] = subject
-    msg["From"] = from_addr
-    msg["To"] = ", ".join(config.email.recipients)
-    msg.set_content(text_body)
-    msg.add_alternative(html_body, subtype="html")
 
     try:
         with smtplib.SMTP(host, port, timeout=30) as server:
             server.starttls()
             server.login(username, password)
-            server.send_message(msg)
+
+            for recipient in config.email.recipients:
+                note = _pick_kate_note(recipient, len(jobs))
+                html_body = _build_html(jobs, note)
+                text_body = _build_text(jobs, note)
+
+                msg = EmailMessage()
+                msg["Subject"] = subject
+                msg["From"] = from_addr
+                msg["To"] = recipient
+                msg.set_content(text_body)
+                msg.add_alternative(html_body, subtype="html")
+                server.send_message(msg)
+
         return True
     except Exception as e:
         print(f"  Warning: Failed to send email: {e}")
         return False
 
 
-def _build_html(jobs: list[Job]) -> str:
+def _pick_kate_note(recipient: str, job_count: int) -> str | None:
+    if recipient.lower().strip() != KATE_EMAIL:
+        return None
+    note = random.choice(KATE_NOTES)
+    return note.format(n=job_count)
+
+
+def _build_html(jobs: list[Job], note: str | None = None) -> str:
+    note_html = ""
+    if note:
+        note_escaped = note.replace("\n", "<br>")
+        note_html = f"""
+    <div style="background:linear-gradient(135deg,#fdf2f8,#fce7f3);border-left:4px solid #ec4899;
+                padding:16px 20px;margin-bottom:20px;border-radius:0 8px 8px 0;font-style:italic;color:#831843;">
+        {note_escaped}
+        <div style="text-align:right;margin-top:8px;font-size:13px;color:#9d174d;">— K</div>
+    </div>"""
+
     rows = ""
     for job in jobs:
         remote_badge = ""
@@ -83,6 +120,7 @@ def _build_html(jobs: list[Job]) -> str:
 <html>
 <head><meta charset="utf-8"></head>
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:700px;margin:0 auto;padding:20px;">
+    {note_html}
     <h2 style="color:#1a1a1a;border-bottom:2px solid #1a56db;padding-bottom:8px;">
         Job Search Agent — {len(jobs)} jobs found
     </h2>
@@ -101,13 +139,22 @@ def _build_html(jobs: list[Job]) -> str:
 </html>"""
 
 
-def _build_text(jobs: list[Job]) -> str:
-    lines = [
+def _build_text(jobs: list[Job], note: str | None = None) -> str:
+    lines = []
+
+    if note:
+        lines.append(note)
+        lines.append(f"  — K")
+        lines.append("")
+        lines.append("-" * 50)
+        lines.append("")
+
+    lines.extend([
         f"Job Search Agent — {len(jobs)} jobs found",
         f"Report for {date.today()}",
         "=" * 50,
         "",
-    ]
+    ])
 
     for i, job in enumerate(jobs, 1):
         remote_tag = f" [{job.remote}]" if job.remote else ""
