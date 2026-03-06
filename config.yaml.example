@@ -1,0 +1,24 @@
+# Job Search Agent Configuration
+
+search:
+  # Keywords to search for (combined with OR)
+  keywords:
+    - software engineer
+    - backend developer
+
+  # Location filter (city or country)
+  location: ""
+
+  # Remote filter: "fulltime", "partial", or "" for any
+  remote: "fulltime"
+
+# Which job boards to scrape
+boards:
+  - wttj  # Welcome to the Jungle
+
+# Max results per board
+results_per_board: 20
+
+# Enable SQLite storage for deduplication (optional)
+storage_enabled: false
+db_path: "jobs.db"
