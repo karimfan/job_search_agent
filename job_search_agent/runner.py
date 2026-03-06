@@ -1,10 +1,14 @@
 from job_search_agent.config import Config
 from job_search_agent.models import Job
-from job_search_agent.scrapers import wttj
+from job_search_agent.scrapers import builtin, himalayas, remotive, themuse, wttj
 from job_search_agent.storage import Storage
 
 SCRAPERS = {
     "wttj": wttj.scrape,
+    "himalayas": himalayas.scrape,
+    "remotive": remotive.scrape,
+    "themuse": themuse.scrape,
+    "builtin": builtin.scrape,
 }
 
 

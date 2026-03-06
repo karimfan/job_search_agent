@@ -20,12 +20,15 @@ Job Search Agent runs as a scheduled task (via cron) that scrapes multiple job b
 - **Storage** — SQLite database for persisting seen jobs and deduplication.
 - **Email** — composes and sends a digest of new listings via SMTP.
 
-### Target Job Boards
+### Supported Job Boards
 
-- [Welcome to the Jungle](https://global.welcometothejungle.com/)
-- [BuiltIn](https://builtin.com/)
-- [Wellfound](https://wellfound.com/)
-- [Underdog.io](https://underdog.io/)
+- [Welcome to the Jungle](https://global.welcometothejungle.com/) — Algolia search API
+- [Himalayas.app](https://himalayas.app/) — public JSON API
+- [Remotive.com](https://remotive.com/) — public JSON API
+- [The Muse](https://www.themuse.com/) — public JSON API
+- [BuiltIn](https://builtin.com/) — HTML scraping (may be blocked by Cloudflare)
+
+> **Deferred**: [Wellfound](https://wellfound.com/) — heavy Cloudflare + auth requirements, planned for a future release.
 
 ## Tech Stack
 

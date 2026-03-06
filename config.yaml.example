@@ -14,7 +14,11 @@ search:
 
 # Which job boards to scrape
 boards:
-  - wttj  # Welcome to the Jungle
+  - wttj        # Welcome to the Jungle (Algolia API)
+  - himalayas   # Himalayas.app (JSON API)
+  - remotive    # Remotive.com (JSON API, 2 req/min limit)
+  - themuse     # The Muse (JSON API)
+  - builtin     # BuiltIn (HTML scraping, may be blocked by Cloudflare)
 
 # Max results per board
 results_per_board: 20
