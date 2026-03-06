@@ -79,7 +79,5 @@ def scrape(config: Config) -> list[Job]:
 
 
 def _matches_keyword(title: str, keyword: str) -> bool:
-    """Check if any word from the keyword phrase appears in the title."""
-    title_lower = title.lower()
-    words = keyword.lower().split()
-    return any(word in title_lower for word in words)
+    """Check if the full keyword phrase appears in the title."""
+    return keyword.lower() in title.lower()
