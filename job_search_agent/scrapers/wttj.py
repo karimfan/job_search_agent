@@ -10,6 +10,35 @@ ALGOLIA_URL = f"https://{ALGOLIA_APP_ID}-dsn.algolia.net/1/indexes/{ALGOLIA_INDE
 
 WTTJ_BASE_URL = "https://www.welcometothejungle.com/en/companies/{org_slug}/jobs/{job_slug}"
 
+# Map common country names to ISO 3166-1 alpha-2 codes
+COUNTRY_CODES = {
+    "united states": "US",
+    "usa": "US",
+    "us": "US",
+    "canada": "CA",
+    "united kingdom": "GB",
+    "uk": "GB",
+    "france": "FR",
+    "germany": "DE",
+    "spain": "ES",
+    "italy": "IT",
+    "netherlands": "NL",
+    "australia": "AU",
+    "india": "IN",
+    "brazil": "BR",
+    "mexico": "MX",
+    "japan": "JP",
+    "singapore": "SG",
+    "ireland": "IE",
+    "sweden": "SE",
+    "switzerland": "CH",
+    "portugal": "PT",
+    "poland": "PL",
+    "belgium": "BE",
+    "austria": "AT",
+    "israel": "IL",
+}
+
 
 def scrape(config: Config) -> list[Job]:
     headers = {
@@ -29,12 +58,20 @@ def scrape(config: Config) -> list[Job]:
             "hitsPerPage": config.results_per_board,
         }
 
+        facet_filters: list[list[str]] = []
         if config.search.remote:
-            params["facetFilters"] = [[f"remote:{config.search.remote}"]]
+            facet_filters.append([f"remote:{config.search.remote}"])
 
         if config.search.location:
-            params["aroundLatLngViaIP"] = False
-            params["filters"] = f"offices.city:'{config.search.location}'"
+            country_code = COUNTRY_CODES.get(config.search.location.lower().strip())
+            if country_code:
+                facet_filters.append([f"offices.country_code:{country_code}"])
+            else:
+                # Treat as city name
+                params["filters"] = f"offices.city:'{config.search.location}'"
+
+        if facet_filters:
+            params["facetFilters"] = facet_filters
 
         resp = httpx.post(ALGOLIA_URL, json=params, headers=headers, timeout=15)
         resp.raise_for_status()

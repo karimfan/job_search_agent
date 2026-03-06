@@ -22,9 +22,7 @@ def scrape(config: Config) -> list[Job]:
             print(f"  Warning: Remotive request failed for '{keyword}': {e}")
             continue
 
-        data = resp.json()
-
-        for hit in data.get("jobs", []):
+        for hit in resp.json().get("jobs", []):
             job_url = hit.get("url", "")
             if not job_url or job_url in seen_urls:
                 continue

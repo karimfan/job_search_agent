@@ -6,74 +6,72 @@ from job_search_agent.config import Config
 from job_search_agent.models import Job
 
 API_URL = "https://himalayas.app/jobs/api"
-PAGE_SIZE = 20  # API max per request
+PAGE_SIZE = 20  # API hard cap per request
+MAX_SCAN_JOBS = 2000  # Scan up to 2000 recent jobs (100 API calls max)
 
 
 def scrape(config: Config) -> list[Job]:
+    # Himalayas has no server-side search. We fetch recent jobs in bulk
+    # and filter client-side. We scan once and match all keywords.
     seen_urls: set[str] = set()
     all_jobs: list[Job] = []
+    offset = 0
 
-    for keyword in config.search.keywords:
-        collected = 0
-        offset = 0
-        # Paginate through results, filtering client-side by keyword
-        max_pages = (config.results_per_board // PAGE_SIZE) + 3
+    keywords_lower = [kw.lower() for kw in config.search.keywords]
 
-        for _ in range(max_pages):
-            if collected >= config.results_per_board:
-                break
+    while offset < MAX_SCAN_JOBS:
+        try:
+            resp = httpx.get(
+                API_URL,
+                params={"limit": PAGE_SIZE, "offset": offset},
+                timeout=15,
+            )
+            resp.raise_for_status()
+        except httpx.HTTPError as e:
+            print(f"  Warning: Himalayas request failed at offset {offset}: {e}")
+            break
 
-            try:
-                resp = httpx.get(
-                    API_URL,
-                    params={"limit": PAGE_SIZE, "offset": offset},
-                    timeout=15,
-                )
-                resp.raise_for_status()
-            except httpx.HTTPError as e:
-                print(f"  Warning: Himalayas request failed for '{keyword}': {e}")
-                break
+        data = resp.json()
+        jobs = data.get("jobs", [])
+        if not jobs:
+            break
 
-            data = resp.json()
-            jobs = data.get("jobs", [])
-            if not jobs:
-                break
+        for hit in jobs:
+            title = hit.get("title", "")
+            title_lower = title.lower()
 
-            for hit in jobs:
-                title = hit.get("title", "")
-                if not _matches_keyword(title, keyword):
-                    continue
+            if not any(kw in title_lower for kw in keywords_lower):
+                continue
 
-                job_url = hit.get("applicationLink") or hit.get("guid", "")
-                if not job_url or job_url in seen_urls:
-                    continue
-                seen_urls.add(job_url)
+            job_url = hit.get("applicationLink") or hit.get("guid", "")
+            if not job_url or job_url in seen_urls:
+                continue
+            seen_urls.add(job_url)
 
-                locations = hit.get("locationRestrictions", [])
-                location = ", ".join(locations) if locations else ""
+            locations = hit.get("locationRestrictions", [])
+            location = ", ".join(locations) if locations else ""
 
-                posted_ts = hit.get("pubDate")
-                posted_date = None
-                if posted_ts:
-                    try:
-                        posted_date = datetime.datetime.fromtimestamp(
-                            posted_ts, tz=datetime.timezone.utc
-                        ).strftime("%Y-%m-%d")
-                    except (OSError, ValueError):
-                        pass
+            posted_ts = hit.get("pubDate")
+            posted_date = None
+            if posted_ts:
+                try:
+                    posted_date = datetime.datetime.fromtimestamp(
+                        posted_ts, tz=datetime.timezone.utc
+                    ).strftime("%Y-%m-%d")
+                except (OSError, ValueError):
+                    pass
 
-                all_jobs.append(Job(
-                    title=title,
-                    company=hit.get("companyName", ""),
-                    location=location,
-                    url=job_url,
-                    source="himalayas",
-                    remote=hit.get("employmentType"),
-                    posted_date=posted_date,
-                ))
-                collected += 1
+            all_jobs.append(Job(
+                title=title,
+                company=hit.get("companyName", ""),
+                location=location,
+                url=job_url,
+                source="himalayas",
+                remote=hit.get("employmentType"),
+                posted_date=posted_date,
+            ))
 
-            offset += PAGE_SIZE
+        offset += PAGE_SIZE
 
     return all_jobs
 

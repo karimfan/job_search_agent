@@ -4,7 +4,7 @@ from job_search_agent.config import Config
 from job_search_agent.models import Job
 
 API_URL = "https://www.themuse.com/api/public/jobs"
-MAX_PAGES = 5  # Cap pagination to avoid excessive API calls
+MAX_PAGES = 50  # Scan up to 1000 remote jobs for client-side keyword matching
 
 
 def scrape(config: Config) -> list[Job]:
@@ -16,10 +16,16 @@ def scrape(config: Config) -> list[Job]:
         collected = 0
 
         while collected < config.results_per_board and page <= MAX_PAGES:
+            params: dict = {"page": page, "descending": "true"}
+
+            # Use server-side location filter for remote jobs
+            if config.search.remote:
+                params["location"] = "Flexible / Remote"
+
             try:
                 resp = httpx.get(
                     API_URL,
-                    params={"page": page, "descending": "true"},
+                    params=params,
                     timeout=15,
                 )
                 resp.raise_for_status()
