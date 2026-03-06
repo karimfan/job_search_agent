@@ -12,19 +12,6 @@ WTTJ_BASE_URL = "https://www.welcometothejungle.com/en/companies/{org_slug}/jobs
 
 
 def scrape(config: Config) -> list[Job]:
-    query = " ".join(config.search.keywords)
-    params: dict = {
-        "query": query,
-        "hitsPerPage": config.results_per_board,
-    }
-
-    if config.search.remote:
-        params["facetFilters"] = [[f"remote:{config.search.remote}"]]
-
-    if config.search.location:
-        params["aroundLatLngViaIP"] = False
-        params["filters"] = f"offices.city:'{config.search.location}'"
-
     headers = {
         "x-algolia-application-id": ALGOLIA_APP_ID,
         "x-algolia-api-key": ALGOLIA_API_KEY,
@@ -33,29 +20,48 @@ def scrape(config: Config) -> list[Job]:
         "Origin": "https://www.welcometothejungle.com",
     }
 
-    resp = httpx.post(ALGOLIA_URL, json=params, headers=headers, timeout=15)
-    resp.raise_for_status()
-    data = resp.json()
+    seen_urls: set[str] = set()
+    all_jobs: list[Job] = []
 
-    jobs = []
-    for hit in data.get("hits", []):
-        org = hit.get("organization", {})
-        offices = hit.get("offices", [])
-        city = offices[0]["city"] if offices else ""
+    for keyword in config.search.keywords:
+        params: dict = {
+            "query": keyword,
+            "hitsPerPage": config.results_per_board,
+        }
 
-        job_url = WTTJ_BASE_URL.format(
-            org_slug=org.get("slug", ""),
-            job_slug=hit.get("slug", ""),
-        )
+        if config.search.remote:
+            params["facetFilters"] = [[f"remote:{config.search.remote}"]]
 
-        jobs.append(Job(
-            title=hit.get("name", ""),
-            company=org.get("name", ""),
-            location=city,
-            url=job_url,
-            source="wttj",
-            remote=hit.get("remote"),
-            posted_date=hit.get("published_at_date"),
-        ))
+        if config.search.location:
+            params["aroundLatLngViaIP"] = False
+            params["filters"] = f"offices.city:'{config.search.location}'"
 
-    return jobs
+        resp = httpx.post(ALGOLIA_URL, json=params, headers=headers, timeout=15)
+        resp.raise_for_status()
+        data = resp.json()
+
+        for hit in data.get("hits", []):
+            org = hit.get("organization", {})
+            offices = hit.get("offices", [])
+            city = offices[0]["city"] if offices else ""
+
+            job_url = WTTJ_BASE_URL.format(
+                org_slug=org.get("slug", ""),
+                job_slug=hit.get("slug", ""),
+            )
+
+            if job_url in seen_urls:
+                continue
+            seen_urls.add(job_url)
+
+            all_jobs.append(Job(
+                title=hit.get("name", ""),
+                company=org.get("name", ""),
+                location=city,
+                url=job_url,
+                source="wttj",
+                remote=hit.get("remote"),
+                posted_date=hit.get("published_at_date"),
+            ))
+
+    return all_jobs
