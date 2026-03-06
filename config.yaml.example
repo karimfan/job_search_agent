@@ -19,6 +19,8 @@ boards:
   - remotive    # Remotive.com (JSON API, 2 req/min limit)
   - themuse     # The Muse (JSON API)
   - builtin     # BuiltIn (HTML scraping, may be blocked by Cloudflare)
+  - underdog    # Underdog.io (JSON API)
+  - wellfound   # Wellfound (requires playwright: uv add playwright && playwright install chromium)
 
 # Max results per board
 results_per_board: 20
@@ -26,3 +28,16 @@ results_per_board: 20
 # Enable SQLite storage for deduplication (optional)
 storage_enabled: false
 db_path: "jobs.db"
+
+# Email notifications (optional)
+# SMTP connection settings come from environment variables:
+#   JSA_SMTP_HOST     - SMTP server (e.g., smtp.gmail.com)
+#   JSA_SMTP_PORT     - SMTP port (e.g., 587)
+#   JSA_SMTP_USERNAME - SMTP login username
+#   JSA_SMTP_PASSWORD - SMTP login password (Gmail: use App Password)
+#   JSA_SMTP_FROM     - sender email address
+email:
+  enabled: false
+  recipients:
+    - user@example.com
+  subject_prefix: "[Job Search Agent]"

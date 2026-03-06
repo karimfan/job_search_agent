@@ -4,6 +4,7 @@ from job_search_agent.config import Config
 from job_search_agent.models import Job
 
 API_URL = "https://www.themuse.com/api/public/jobs"
+MAX_PAGES = 5  # Cap pagination to avoid excessive API calls
 
 
 def scrape(config: Config) -> list[Job]:
@@ -14,7 +15,7 @@ def scrape(config: Config) -> list[Job]:
         page = 1
         collected = 0
 
-        while collected < config.results_per_board:
+        while collected < config.results_per_board and page <= MAX_PAGES:
             try:
                 resp = httpx.get(
                     API_URL,

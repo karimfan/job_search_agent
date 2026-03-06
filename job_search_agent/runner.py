@@ -1,6 +1,6 @@
 from job_search_agent.config import Config
 from job_search_agent.models import Job
-from job_search_agent.scrapers import builtin, himalayas, remotive, themuse, wttj
+from job_search_agent.scrapers import builtin, himalayas, remotive, themuse, underdog, wellfound, wttj
 from job_search_agent.storage import Storage
 
 SCRAPERS = {
@@ -9,6 +9,8 @@ SCRAPERS = {
     "remotive": remotive.scrape,
     "themuse": themuse.scrape,
     "builtin": builtin.scrape,
+    "underdog": underdog.scrape,
+    "wellfound": wellfound.scrape,
 }
 
 

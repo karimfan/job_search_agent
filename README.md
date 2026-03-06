@@ -18,7 +18,7 @@ Job Search Agent runs as a scheduled task (via cron) that scrapes multiple job b
 - **Runner** — loads config, orchestrates scraping, dedup, and email delivery.
 - **Scrapers** — one module per job board, each returning a common Job model.
 - **Storage** — SQLite database for persisting seen jobs and deduplication.
-- **Email** — composes and sends a digest of new listings via SMTP.
+- **Email** — composes and sends an HTML digest of new listings via SMTP.
 
 ### Supported Job Boards
 
@@ -27,8 +27,8 @@ Job Search Agent runs as a scheduled task (via cron) that scrapes multiple job b
 - [Remotive.com](https://remotive.com/) — public JSON API
 - [The Muse](https://www.themuse.com/) — public JSON API
 - [BuiltIn](https://builtin.com/) — HTML scraping (may be blocked by Cloudflare)
-
-> **Deferred**: [Wellfound](https://wellfound.com/) — heavy Cloudflare + auth requirements, planned for a future release.
+- [Underdog.io](https://underdog.io/) — public JSON API
+- [Wellfound](https://wellfound.com/) — headless browser scraping (requires Playwright)
 
 ## Tech Stack
 
@@ -37,17 +37,66 @@ Job Search Agent runs as a scheduled task (via cron) that scrapes multiple job b
 - **SMTP** (smtplib) — email delivery
 - **YAML** — configuration (search criteria, recipients, schedule)
 - **Cron** — scheduling
+- **Playwright** (optional) — required only for Wellfound scraper
 
 ## Configuration
 
-Search criteria, email recipients, and schedule are defined in a YAML config file. SMTP credentials and other secrets should be set via environment variables — never commit them to source control.
+Search criteria, email recipients, and schedule are defined in a YAML config file. See `config.yaml.example` for all options.
+
+## Email Notifications
+
+Email is optional. To enable it, add an `email` section to your `config.yaml`:
+
+```yaml
+email:
+  enabled: true
+  recipients:
+    - you@example.com
+    - teammate@example.com
+  subject_prefix: "[Job Search Agent]"
+```
+
+SMTP connection settings are loaded from environment variables:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `JSA_SMTP_HOST` | SMTP server hostname | `smtp.gmail.com` |
+| `JSA_SMTP_PORT` | SMTP port | `587` |
+| `JSA_SMTP_USERNAME` | SMTP login username | `you@gmail.com` |
+| `JSA_SMTP_PASSWORD` | SMTP login password | Gmail: use an [App Password](https://support.google.com/accounts/answer/185833) |
+| `JSA_SMTP_FROM` | Sender email address | `you@gmail.com` |
+
+### Gmail Setup
+
+1. Enable 2-Step Verification on your Google account
+2. Generate an [App Password](https://support.google.com/accounts/answer/185833)
+3. Set environment variables:
+
+```bash
+export JSA_SMTP_HOST=smtp.gmail.com
+export JSA_SMTP_PORT=587
+export JSA_SMTP_USERNAME=you@gmail.com
+export JSA_SMTP_PASSWORD=your-app-password
+export JSA_SMTP_FROM=you@gmail.com
+```
+
+## Wellfound Setup (Optional)
+
+Wellfound requires a headless browser to bypass anti-bot protection:
+
+```bash
+uv add playwright
+playwright install chromium
+```
+
+Then add `wellfound` to your boards list in `config.yaml`.
 
 ## Running
 
 ```bash
 # Run once manually
-python3 -m job_search_agent
+uv run python3 -m job_search_agent
 
 # Schedule via cron (e.g. daily at 8am)
-0 8 * * * cd /path/to/job_search_agent && python3 -m job_search_agent
+0 8 * * * cd /path/to/job_search_agent && uv run python3 -m job_search_agent
 ```
