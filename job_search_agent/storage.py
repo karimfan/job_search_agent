@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS jobs (
 class Storage:
     def __init__(self, db_path: str = DEFAULT_DB_PATH):
         self.db_path = db_path
-        self._conn = sqlite3.connect(db_path)
+        self._conn = sqlite3.connect(db_path, timeout=10)
+        self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute(SCHEMA)
         self._conn.commit()
 

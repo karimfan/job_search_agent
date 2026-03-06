@@ -14,13 +14,15 @@ search:
 
 # Which job boards to scrape
 boards:
-  - wttj        # Welcome to the Jungle (Algolia API)
-  - himalayas   # Himalayas.app (JSON API)
-  - remotive    # Remotive.com (JSON API, 2 req/min limit)
-  - themuse     # The Muse (JSON API)
-  - builtin     # BuiltIn (HTML scraping, may be blocked by Cloudflare)
-  - underdog    # Underdog.io (JSON API)
-  - wellfound   # Wellfound (requires playwright: uv add playwright && playwright install chromium)
+  - builtin     # BuiltIn (HTML scraping, server-side keyword search)
+  - jobicy      # Jobicy (JSON API, server-side tag + industry + geo filter)
+  - remoteok    # RemoteOK (JSON API, tag-based + client-side filter)
+  - himalayas   # Himalayas.app (JSON API, client-side filter, scans 2000 recent)
+  - remotive    # Remotive.com (JSON API, server-side keyword search)
+  - themuse     # The Muse (JSON API, client-side filter)
+  - underdog    # Underdog.io (JSON API, client-side filter, ~83 total jobs)
+  # - wttj      # Welcome to the Jungle (Algolia API, mostly European jobs)
+  # - wellfound # Wellfound (blocked by DataDome anti-bot)
 
 # Max results per board
 results_per_board: 20
