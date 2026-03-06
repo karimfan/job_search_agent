@@ -34,9 +34,6 @@ def send_digest(jobs: list[Job], config: Config) -> bool:
         print("  Warning: Email enabled but no recipients configured")
         return False
 
-    if not jobs:
-        return False
-
     host = os.environ.get("JSA_SMTP_HOST", "")
     port = int(os.environ.get("JSA_SMTP_PORT", "587"))
     username = os.environ.get("JSA_SMTP_USERNAME", "")
@@ -56,7 +53,10 @@ def send_digest(jobs: list[Job], config: Config) -> bool:
         print(f"  Warning: Missing SMTP env vars: {', '.join(missing)}")
         return False
 
-    subject = f"{config.email.subject_prefix} {len(jobs)} jobs found — {date.today()}"
+    if jobs:
+        subject = f"{config.email.subject_prefix} {len(jobs)} jobs found — {date.today()}"
+    else:
+        subject = f"{config.email.subject_prefix} No new jobs today — {date.today()}"
 
     try:
         with smtplib.SMTP(host, port, timeout=30) as server:
@@ -65,8 +65,8 @@ def send_digest(jobs: list[Job], config: Config) -> bool:
 
             for recipient in config.email.recipients:
                 note = _pick_kate_note(recipient, len(jobs))
-                html_body = _build_html(jobs, note)
-                text_body = _build_text(jobs, note)
+                html_body = _build_html(jobs, config, note)
+                text_body = _build_text(jobs, config, note)
 
                 msg = EmailMessage()
                 msg["Subject"] = subject
@@ -114,7 +114,7 @@ def _pick_kate_note(recipient: str, job_count: int) -> str | None:
     return KATE_NOTES[idx].format(n=job_count)
 
 
-def _build_html(jobs: list[Job], note: str | None = None) -> str:
+def _build_html(jobs: list[Job], config: Config, note: str | None = None) -> str:
     note_html = ""
     if note:
         note_escaped = note.replace("\n", "<br>")
@@ -144,30 +144,46 @@ def _build_html(jobs: list[Job], note: str | None = None) -> str:
             <td style="padding:12px 8px;color:#888;font-size:13px;">{job.source}</td>
         </tr>"""
 
-    return f"""<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:700px;margin:0 auto;padding:20px;">
-    {note_html}
-    <h2 style="color:#1a1a1a;border-bottom:2px solid #1a56db;padding-bottom:8px;">
-        Job Search Agent — {len(jobs)} jobs found
-    </h2>
-    <p style="color:#555;">Report for {date.today()}</p>
+    if jobs:
+        heading = f"Job Search Agent — {len(jobs)} jobs found"
+        body_content = f"""
     <table style="width:100%;border-collapse:collapse;">
         <tr style="background:#f8f9fa;border-bottom:2px solid #dee2e6;">
             <th style="padding:8px;text-align:left;">Job</th>
             <th style="padding:8px;text-align:left;width:80px;">Source</th>
         </tr>
         {rows}
-    </table>
-    <p style="color:#888;font-size:12px;margin-top:20px;">
+    </table>"""
+    else:
+        heading = "Job Search Agent — No new jobs today"
+        body_content = """
+    <p style="color:#555;font-size:15px;">No matching jobs were found today. We'll keep looking!</p>"""
+
+    return f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:700px;margin:0 auto;padding:20px;">
+    {note_html}
+    <h2 style="color:#1a1a1a;border-bottom:2px solid #1a56db;padding-bottom:8px;">
+        {heading}
+    </h2>
+    <p style="color:#555;">Report for {date.today()}</p>
+    {body_content}
+    <div style="margin-top:24px;padding:12px 16px;background:#f8f9fa;border-radius:6px;font-size:13px;color:#666;">
+        <strong>Search summary</strong><br>
+        Boards: {', '.join(config.boards)}<br>
+        Keywords: {', '.join(config.search.keywords)}
+        {f'<br>Location: {config.search.location}' if config.search.location else ''}
+        {f'<br>Remote: {config.search.remote}' if config.search.remote else ''}
+    </div>
+    <p style="color:#888;font-size:12px;margin-top:12px;">
         Sent by <a href="https://github.com/karimfan/job_search_agent">Job Search Agent</a>
     </p>
 </body>
 </html>"""
 
 
-def _build_text(jobs: list[Job], note: str | None = None) -> str:
+def _build_text(jobs: list[Job], config: Config, note: str | None = None) -> str:
     lines = []
 
     if note:
@@ -177,23 +193,42 @@ def _build_text(jobs: list[Job], note: str | None = None) -> str:
         lines.append("-" * 50)
         lines.append("")
 
-    lines.extend([
-        f"Job Search Agent — {len(jobs)} jobs found",
-        f"Report for {date.today()}",
-        "=" * 50,
-        "",
-    ])
+    if jobs:
+        lines.extend([
+            f"Job Search Agent — {len(jobs)} jobs found",
+            f"Report for {date.today()}",
+            "=" * 50,
+            "",
+        ])
+        for i, job in enumerate(jobs, 1):
+            remote_tag = f" [{job.remote}]" if job.remote else ""
+            location = job.location or "Not specified"
+            lines.append(f"{i}. {job.title}")
+            lines.append(f"   Company:  {job.company}")
+            lines.append(f"   Location: {location}{remote_tag}")
+            if job.posted_date:
+                lines.append(f"   Posted:   {job.posted_date}")
+            lines.append(f"   Source:   {job.source}")
+            lines.append(f"   URL:      {job.url}")
+            lines.append("")
+    else:
+        lines.extend([
+            "Job Search Agent — No new jobs today",
+            f"Report for {date.today()}",
+            "=" * 50,
+            "",
+            "No matching jobs were found today. We'll keep looking!",
+            "",
+        ])
 
-    for i, job in enumerate(jobs, 1):
-        remote_tag = f" [{job.remote}]" if job.remote else ""
-        location = job.location or "Not specified"
-        lines.append(f"{i}. {job.title}")
-        lines.append(f"   Company:  {job.company}")
-        lines.append(f"   Location: {location}{remote_tag}")
-        if job.posted_date:
-            lines.append(f"   Posted:   {job.posted_date}")
-        lines.append(f"   Source:   {job.source}")
-        lines.append(f"   URL:      {job.url}")
-        lines.append("")
+    lines.append("-" * 50)
+    lines.append("Search summary")
+    lines.append(f"  Boards:   {', '.join(config.boards)}")
+    lines.append(f"  Keywords: {', '.join(config.search.keywords)}")
+    if config.search.location:
+        lines.append(f"  Location: {config.search.location}")
+    if config.search.remote:
+        lines.append(f"  Remote:   {config.search.remote}")
+    lines.append("")
 
     return "\n".join(lines)

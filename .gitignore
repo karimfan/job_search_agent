@@ -12,4 +12,5 @@ env.sh
 .venv/
 venv/
 config.yaml
+recruiting.yaml
 .python-version

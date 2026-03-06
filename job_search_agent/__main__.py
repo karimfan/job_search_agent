@@ -28,7 +28,7 @@ def main() -> None:
     jobs = run(config)
     print_jobs(jobs)
 
-    if config.email.enabled and jobs:
+    if config.email.enabled:
         print("Sending email digest...")
         if send_digest(jobs, config):
             print(f"  Email sent to {len(config.email.recipients)} recipient(s)")
