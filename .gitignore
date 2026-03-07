@@ -13,4 +13,5 @@ env.sh
 venv/
 config.yaml
 recruiting.yaml
+lawyer.yaml
 .python-version
